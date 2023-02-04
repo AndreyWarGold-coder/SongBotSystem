@@ -1,5 +1,4 @@
 import random
-import downloader
 import SL_Settings
 import WW_String
 import dropboxFN
