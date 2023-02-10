@@ -64,7 +64,7 @@ def start_download_thread(url, name_categoty, colvo=20):
         th1.start()
         return "yes"
 
-def start_downloading_from_spotify_playlist(url, name_category, colvo=20):
+def start_downloading_from_spotify_playlist(url, name_category, colvo=20, isFullCheck = False):
     global Thread_work
     list_music = {}
     url_re = url.split("/")[-1]

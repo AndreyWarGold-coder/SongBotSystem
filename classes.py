@@ -45,23 +45,48 @@ class User:
         SL_Settings.save_obj(tmp, self.name+self.id, "users")
 
 class Music:
-    def __init__(self, name: str, author: str, category: str = "", isGetViewers = False):
+    def __init__(self, name: str, author: str, category: str = "", isGetViewers = False, views = 0):
         self.name = name
         self.author = author
         self.category = category
         self.views = 0
-        if isGetViewers:
-            self.views = Viewers.get_count_listen(author+" "+name)
+        self.views = views
 
     def get_file(self):
         rand_index = random.randint(0, 2)
-        print("try download " + "music/"+self.author+"_"+self.name+"_"+str(rand_index)+".mp3")
         file = dropboxFN.dropbox_download_file("music/"+self.author+"_"+self.name+"_"+str(rand_index)+".mp3")
         return file
 
+    def get_views_in_text(self):
+        print("IN:", self.views)
+        tmp = ""
+        list_tmp = []
+        colvo = self.views
+        list_razr = list(str(colvo))
+        tt = 0
+        for i in range(len(list_razr)):
+            y = (len(list_razr)-1)-i
+            tt+=1
+            if(tt != 3):
+                list_tmp.append(list_razr[y])
+            else:
+                tt = 0
+                list_tmp.append(","+list_razr[y])
+        for y in range(len(list_tmp)):
+            i = (len(list_tmp)-1)-y
+            tmp+=list_tmp[i]
+        if(tmp.startswith(",")):
+            list_tmp = list(tmp)
+            list_tmp.remove(",")
+            tmp = ""
+            for i in list_tmp:
+                tmp+=i
+        print("OUT:", tmp)
+        return tmp
+
 class CategoryController:
-    def __init__(self):
-        pass
+    def __init__(self, list_view):
+        self.list_view = list_view
 
     def get_list_category(self):
         tmp = dropboxFN.dropbox_list_files("categorys")
@@ -87,9 +112,16 @@ class CategoryController:
         print(list_music, len(list_music))
         b = len(list_music)-1
         index = random.randint(0, b)
-        author_music = list_music[index].split("_")[0]
-        name_music = list_music[index].split("_")[1].split(".mp3")[0]
-        return Music(name_music, author_music, category, isGetViews)
+        author_music = ""
+        name_music = ""
+        tmp = list_music[index].split("_")
+        if(len(tmp) > 2):
+            name_music = list_music[index].split("_")[-1].split(".mp3")[0]
+            author_music = list_music[index].split("_"+name_music)[0]
+        else:
+            author_music = list_music[index].split("_")[0]
+            name_music = list_music[index].split("_")[1].split(".mp3")[0]
+        return Music(name_music, author_music, category, isGetViews, self.list_view[author_music+"_"+name_music])
 
     def add_category(self):
         raise Exception("None this method")
@@ -139,11 +171,12 @@ class Session:
         pass
 
 class ReturnCommandObj:
-    def __init__(self, text: str = None, buttons = None, replyText: str = None, file = None):
+    def __init__(self, text: str = None, buttons = None, replyText: str = None, file = None, isEnd = False):
         self.text = text
         self.buttons = buttons
         self.replyText = replyText
         self.file = file
+        self.isEnd = isEnd
 
 class UpDownSession(Session):
     def __init__(self, chat_id: str, mode: str, messager: str, host: str, category_controller: CategoryController):
@@ -154,7 +187,11 @@ class UpDownSession(Session):
         self.last_music: Music = None
         self.max_rating = 0
 
-    def next_step(self, text: str = "", user_name: str = "None", user_id: str = "None"):
+    def next_step(self, text: str = "", user_name: str = "None", user_id: str = "None", isWin = True):
+        if user_name != self.host:
+            return None
+        if isWin != True:
+            return ReturnCommandObj("Нажаль, ви помилилися =( \nВаш рекорд прогнозів: " + str(self.max_rating), isEnd=True)
         if not self.isUser(user_name, user_id):
             self.add_user(user_name, user_id)
         user: User = self.get_user(user_name, user_id)
@@ -162,26 +199,40 @@ class UpDownSession(Session):
             self.music = self.category_controller.get_music_by_category(self.category, True)
             if self.last_music == None:
                 self.last_music = self.category_controller.get_music_by_category(self.category, True)
-                return ReturnCommandObj("Минула пісня "+self.last_music.author+" - "+self.last_music.name+". Кількість переглядів: " +str(self.last_music.views)+"\nВам надано 10 секунд пісні, спробуйте вгадати чи вона популярніша, чи менш популярніша від минулої", buttons=["_Up", "_Down"], file=self.music.get_file())
+                return ReturnCommandObj("Минула пісня "+self.last_music.author+" - "+self.last_music.name+". \n👁‍🗨: " +str(self.last_music.get_views_in_text())+"\nВам надано 10 секунд пісні, спробуйте вгадати чи вона популярніша, чи менш популярніша від минулої", buttons=["_🔼", "_🔽"], file=self.music.get_file())
             else:
-                return ReturnCommandObj("Минула пісня "+self.last_music.author+" - "+self.last_music.name+". Кількість переглядів: " +str(self.last_music.views)+"\nВам надано 10 секунд пісні, спробуйте вгадати чи вона популярніша, чи менш популярніша від минулої",
-                                        buttons=["_Up", "_Down"], file=self.music.get_file())
+                return ReturnCommandObj("Минула пісня "+self.last_music.author+" - "+self.last_music.name+". \n👁‍🗨: " +str(self.last_music.get_views_in_text())+"\nВам надано 10 секунд пісні, спробуйте вгадати чи вона популярніша, чи менш популярніша від минулої",
+                                        buttons=["_🔼", "_🔽"], file=self.music.get_file())
 
     def set_category(self, text: str, user_name: str = None, user_id: str = None):
         self.category = text
         return self.next_step(user_name=user_name, user_id=user_id)
 
     def click_button(self, button: str = "", user_name: str = "None", user_id: str = "None"):
+        if user_name != self.host:
+            return None
         if(button.startswith("category_")):
             return self.set_category(button.split("_")[1], user_name=user_name, user_id=user_id)
-        elif(button == "Up"):
+        elif(button == "🔼"):
+            last_views = self.last_music.views
+            now_views = self.music.views
+            isWin = False
+            if now_views >= last_views:
+                self.max_rating += 1
+                isWin = True
             self.last_music = self.music
             self.music = None
-            return self.next_step(user_name=user_name, user_id=user_id)
-        elif(button == "Down"):
+            return self.next_step(user_name=user_name, user_id=user_id, isWin=isWin)
+        elif(button == "🔽"):
+            last_views = self.last_music.views
+            now_views = self.music.views
+            isWin = False
+            if now_views < last_views:
+                self.max_rating += 1
+                isWin = True
             self.last_music = self.music
             self.music = None
-            return
+            return self.next_step(user_name=user_name, user_id=user_id, isWin=isWin)
 
     def start_message(self):
         return ReturnCommandObj("Оберіть категорію пісень", self.category_controller.get_list_category())
@@ -251,7 +302,7 @@ class CommandController:
     def __init__(self):
         self.list_session_telegram: list[Session] = []
         self.list_session_discord: list[Session] = []
-        self.categorysContraller = CategoryController()
+        self.categorysContraller = CategoryController(SL_Settings.load_obj("list_view", "options"))
 
     def get_session_by_id(self, id: str, where: str = "every"):
         if(where == "every" or where == "discord"):
@@ -298,6 +349,13 @@ class CommandController:
         if self.get_session_by_id(chat_id) != None:
             return ReturnCommandObj("У вас вже почата гра, завершіть її командою /end")
         session = DefoultSession(chat_id, "defoult", messanger_name, user_name, self.categorysContraller) #standart_cat
+        self.add_session(session)
+        return session.start_message()
+
+    def start_UpDown_mode(self, chat_id: str, user_name: str, messanger_name: str):
+        if self.get_session_by_id(chat_id) != None:
+            return ReturnCommandObj("У вас вже почата гра, завершіть її командою /end")
+        session = UpDownSession(chat_id, "UpDown", messanger_name, user_name, self.categorysContraller)
         self.add_session(session)
         return session.start_message()
 

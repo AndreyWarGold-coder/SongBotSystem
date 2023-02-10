@@ -4,8 +4,32 @@ import os
 from moviepy.editor import *
 import random
 import downloader
+import Viewers
 
 list_music = dropboxFN.dropbox_list_files("music")
+
+def get_list_views_file():
+    return SL_Settings.load_obj("list_view", "options")
+
+def add_list_views_file(slowire):
+    list_file = dropboxFN.dropbox_list_files("options")
+    if("list_view.pickle" in list_file):
+        tmp = get_list_views_file()
+        for i in slowire:
+            tmp[i] = slowire[i]
+        SL_Settings.save_obj(tmp, "list_view", "options")
+    else:
+        SL_Settings.save_obj(slowire, "list_view", "options")
+
+def update_list_views_file():
+    tmp = {}
+    for music in list_music:
+        author = music.split("_")[0]
+        name = music.split("_")[1]
+        tmp[author+"_"+name] = Viewers.get_count_listen(author+"_"+name)
+        print("GOOD UPDATE!", tmp[author+"_"+name])
+    add_list_views_file(tmp)
+    print("DONE")
 
 def get_music_list_without_indexes(listM):
     tmp = []
@@ -34,7 +58,19 @@ def is_okay(category):
     return error
 
 
-
+def is_okay_full(category):
+    tmp = SL_Settings.load_obj(category, "categorys")
+    tmp = clear_mp3_ends(tmp)
+    list_music_tmp = clear_mp3_ends(list_music)
+    error = []
+    for i in tmp:
+        for y in range(3):
+            if (i+"_"+str(y)) in list_music_tmp:
+                pass
+            else:
+                error.append(i+"_"+str(y))
+    print("ERRORS ", error)
+    return error
 
 
 def split_music(music, index):
@@ -66,17 +102,29 @@ def start_rewrite_files():
         dropboxFN.dropbox_delete_file("music/" + i)
         print(i+" done split")
 
-def check_categorys_is_okey():
+def ckeck_random():
+    error = []
+    list_music_tmp = clear_mp3_ends(list_music)
+    list_music_without = get_music_list_without_indexes(list_music)
+    for i in list_music_without:
+        for y in range(3):
+            if(i+"_"+str(y)) in list_music_tmp:
+                pass
+            else:
+                error.append(i+"_"+str(y))
+    print(error)
+    return error
+
+def check_categorys_is_okey(isFull = False):
     list_files = dropboxFN.dropbox_list_files("categorys")
     list_error = []
     for i in list_files:
-        tmp = is_okay(i.split(".")[0])
+        tmp = []
+        if isFull:
+            tmp = is_okay_full(i.split(".")[0])
+        else:
+            tmp = is_okay(i.split(".")[0])
         list_error.append(tmp)
-        file_tmp = SL_Settings.load_obj(i.split(".")[0], "categorys")
-
-        for yy in tmp:
-            file_tmp.remove(yy+".mp3")
-        SL_Settings.save_obj(file_tmp, i.split(".")[0], "categorys")
 
 
     print("Result check ", list_error)
@@ -91,7 +139,8 @@ def download_link(url, category):
     if(category in all_categorys_without_pickle):
         category_list_music = SL_Settings.load_obj(category, "categorys")
 
-check_categorys_is_okey()
+
+update_list_views_file()
 
 #downloader.start_download_thread("https://open.spotify.com/playlist/6hyQKlkQsGchQYEaLOVItN?si=f0398785e0084ba1", "VibeUkr", 65)
 #while(True):

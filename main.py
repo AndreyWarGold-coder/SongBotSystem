@@ -13,7 +13,7 @@ def gostart(message: telebot.types.Message):
     author = message.from_user.username
     author_id = message.from_user.id
     chat_id = str(message.chat.id)
-    send_ReturnCommandObj(mCommander.end_session(chat_id, author, author_id, "telegram"), chat_id, None)
+    send_ReturnCommandObj(mCommander.end_session(chat_id, author, author_id, "telegram"), chat_id, message)
     print("end end")
 
 @bot.message_handler(commands=['go'])
@@ -22,9 +22,25 @@ def gostart(message: telebot.types.Message):
     author = message.from_user.username
     author_id = message.from_user.id
     chat_id = str(message.chat.id)
-    send_ReturnCommandObj(mCommander.start_defoult_mode(chat_id, author, "telegram"), chat_id, None)
+    send_ReturnCommandObj(mCommander.start_defoult_mode(chat_id, author, "telegram"), chat_id, message)
     print("end_go")
 
+@bot.message_handler(commands=['go2'])
+def gostart(message: telebot.types.Message):
+    print("start_go2")
+    author = message.from_user.username
+    author_id = message.from_user.id
+    chat_id = str(message.chat.id)
+    send_ReturnCommandObj(mCommander.start_UpDown_mode(chat_id, author, "telegram"), chat_id, message)
+    print("end_go2")
+@bot.callback_query_handler(lambda c: c.data.startswith("_🔼") or c.data.startswith("_🔽"))
+def skip_query(call: telebot.types.CallbackQuery):
+    author = call.from_user.username
+    author_id = call.from_user.id
+    chat_id = str(call.message.chat.id)
+    category = call.data.split("_")[1]
+    bot.delete_message(chat_id, call.message.id)
+    send_ReturnCommandObj(mCommander.click_button(category, chat_id, author, author_id, "telegram"), chat_id, call.message)
 @bot.callback_query_handler(lambda c: c.data.startswith("_skip"))
 def skip_query(call: telebot.types.CallbackQuery):
     author = call.from_user.username
@@ -32,7 +48,7 @@ def skip_query(call: telebot.types.CallbackQuery):
     chat_id = str(call.message.chat.id)
     category = call.data.split("_")[1]
     bot.send_message(chat_id, "Нічого, наступного разу повезе!")
-    send_ReturnCommandObj(mCommander.click_button(category, chat_id, author, author_id, "telegram"), chat_id, None)
+    send_ReturnCommandObj(mCommander.click_button(category, chat_id, author, author_id, "telegram"), chat_id, call.message)
 
 @bot.callback_query_handler(lambda c: c.data.startswith("category_"))
 def skip_query(call: telebot.types.CallbackQuery):
@@ -42,7 +58,7 @@ def skip_query(call: telebot.types.CallbackQuery):
     category = call.data.split("_")[1]
     bot.delete_message(chat_id, call.message.message_id)
     bot.send_message(chat_id, "Обрана категорія " + category)
-    send_ReturnCommandObj(mCommander.click_button(call.data, chat_id, author, author_id, "telegram"), chat_id, None)
+    send_ReturnCommandObj(mCommander.click_button(call.data, chat_id, author, author_id, "telegram"), chat_id, call.message)
 
 def send_ReturnCommandObj(comm: classes.ReturnCommandObj, chat_id: str, message: telebot.types.Message):
     if( comm != None):
@@ -68,6 +84,9 @@ def send_ReturnCommandObj(comm: classes.ReturnCommandObj, chat_id: str, message:
                 bot.send_audio(chat_id, comm.file.read(), reply_markup=markup)
             else:
                 bot.send_audio(chat_id, comm.file.read())
+    if(comm != None and comm.isEnd):
+        send_ReturnCommandObj(mCommander.end_session(chat_id, message.from_user.username, message.from_user.id, "telegram"), chat_id, message)
+
 
 @bot.message_handler(commands=['add'])
 def gostart(message: telebot.types.Message):
