@@ -2,6 +2,7 @@ import random
 import SL_Settings
 import WW_String
 import dropboxFN
+import Viewers
 
 
 class User:
@@ -44,10 +45,13 @@ class User:
         SL_Settings.save_obj(tmp, self.name+self.id, "users")
 
 class Music:
-    def __init__(self, name: str, author: str, category: str = ""):
+    def __init__(self, name: str, author: str, category: str = "", isGetViewers = False):
         self.name = name
         self.author = author
         self.category = category
+        self.views = 0
+        if isGetViewers:
+            self.views = Viewers.get_count_listen(author+" "+name)
 
     def get_file(self):
         rand_index = random.randint(0, 2)
@@ -77,7 +81,7 @@ class CategoryController:
                     list_tmp.append(i.split(".mp3")[0])
             return list_tmp
 
-    def get_music_by_category(self, category: str = "Random"):
+    def get_music_by_category(self, category: str = "Random", isGetViews = False):
         list_music = []
         list_music = self.get_list_music_by_category(category)
         print(list_music, len(list_music))
@@ -85,7 +89,7 @@ class CategoryController:
         index = random.randint(0, b)
         author_music = list_music[index].split("_")[0]
         name_music = list_music[index].split("_")[1].split(".mp3")[0]
-        return Music(name_music, author_music, category)
+        return Music(name_music, author_music, category, isGetViews)
 
     def add_category(self):
         raise Exception("None this method")
@@ -141,12 +145,55 @@ class ReturnCommandObj:
         self.replyText = replyText
         self.file = file
 
+class UpDownSession(Session):
+    def __init__(self, chat_id: str, mode: str, messager: str, host: str, category_controller: CategoryController):
+        super().__init__(chat_id, mode, messager, host)
+        self.category_controller = category_controller
+        self.category = None
+        self.music: Music = None
+        self.last_music: Music = None
+        self.max_rating = 0
+
+    def next_step(self, text: str = "", user_name: str = "None", user_id: str = "None"):
+        if not self.isUser(user_name, user_id):
+            self.add_user(user_name, user_id)
+        user: User = self.get_user(user_name, user_id)
+        if self.music == None:
+            self.music = self.category_controller.get_music_by_category(self.category, True)
+            if self.last_music == None:
+                self.last_music = self.category_controller.get_music_by_category(self.category, True)
+                return ReturnCommandObj("Минула пісня "+self.last_music.author+" - "+self.last_music.name+". Кількість переглядів: " +str(self.last_music.views)+"\nВам надано 10 секунд пісні, спробуйте вгадати чи вона популярніша, чи менш популярніша від минулої", buttons=["_Up", "_Down"], file=self.music.get_file())
+            else:
+                return ReturnCommandObj("Минула пісня "+self.last_music.author+" - "+self.last_music.name+". Кількість переглядів: " +str(self.last_music.views)+"\nВам надано 10 секунд пісні, спробуйте вгадати чи вона популярніша, чи менш популярніша від минулої",
+                                        buttons=["_Up", "_Down"], file=self.music.get_file())
+
+    def set_category(self, text: str, user_name: str = None, user_id: str = None):
+        self.category = text
+        return self.next_step(user_name=user_name, user_id=user_id)
+
+    def click_button(self, button: str = "", user_name: str = "None", user_id: str = "None"):
+        if(button.startswith("category_")):
+            return self.set_category(button.split("_")[1], user_name=user_name, user_id=user_id)
+        elif(button == "Up"):
+            self.last_music = self.music
+            self.music = None
+            return self.next_step(user_name=user_name, user_id=user_id)
+        elif(button == "Down"):
+            self.last_music = self.music
+            self.music = None
+            return
+
+    def start_message(self):
+        return ReturnCommandObj("Оберіть категорію пісень", self.category_controller.get_list_category())
+
+
 class DefoultSession(Session):
     def __init__(self, chat_id: str, mode: str, messager: str, host: str, category_controller: CategoryController):
         super().__init__(chat_id, mode, messager, host)
         self.category_controller = category_controller
         self.category = None
         self.music: Music = None
+        self.last_music = None
         self.isNameUnswer = False
         self.isAuthorUnswer = False
 
@@ -156,7 +203,11 @@ class DefoultSession(Session):
         user: User = self.get_user(user_name, user_id)
         if self.music == None:
             self.music = self.category_controller.get_music_by_category(self.category)
-            return ReturnCommandObj("Вам надано 10 секунд пісні, спробуйте вгадати автора та назву", buttons=["_skip"], file=self.music.get_file())
+            if self.last_music == None:
+                return ReturnCommandObj("Вам надано 10 секунд пісні, спробуйте вгадати автора та назву", buttons=["_skip"], file=self.music.get_file())
+            else:
+                return ReturnCommandObj("Це була пісня: "+self.last_music.author+" - "+self.last_music.name+"\nВам надано 10 секунд пісні, спробуйте вгадати автора та назву",
+                                        buttons=["_skip"], file=self.music.get_file())
         elif(self.category != None):
             if(WW_String.is_iqvals(self.music.name, text) and not WW_String.is_iqvals(self.music.author, text)):
                 self.isNameUnswer = True
@@ -174,6 +225,7 @@ class DefoultSession(Session):
                 self.isAuthorUnswer = False
                 self.isNameUnswer = False
                 self.music = None
+                self.last_music = None
                 self.music = self.category_controller.get_music_by_category(self.category)
                 return ReturnCommandObj(replyText="Вау, ви вгадали і пісню, і автора. Супер! Йдемо далі!\n\nВам надано 10 секунд пісні, спробуйте вгадати автора та назву", buttons=["_skip"], file=self.music.get_file())
 
@@ -186,6 +238,7 @@ class DefoultSession(Session):
         if(button.startswith("category_")):
             return self.set_category(button.split("_")[1], user_name=user_name, user_id=user_id)
         elif(button == "skip"):
+            self.last_music = self.music
             self.isAuthorUnswer = False
             self.isNameUnswer = False
             self.music = None
