@@ -45,7 +45,7 @@ class User:
         SL_Settings.save_obj(tmp, self.name+self.id, "users")
 
 class Music:
-    def __init__(self, name: str, author: str, category: str = "", isGetViewers = False, views = 0):
+    def __init__(self, name: str, author: str, category: str = "",views = 0):
         self.name = name
         self.author = author
         self.category = category
@@ -103,10 +103,10 @@ class CategoryController:
             list_tmp = []
             for i in tmp:
                 if(i.endswith("_0.mp3")):
-                    list_tmp.append(i.split(".mp3")[0])
+                    list_tmp.append(i.split("_0.mp3")[0])
             return list_tmp
 
-    def get_music_by_category(self, category: str = "Random", isGetViews = False):
+    def get_music_by_category(self, category: str = "Random"):
         list_music = []
         list_music = self.get_list_music_by_category(category)
         print(list_music, len(list_music))
@@ -121,7 +121,7 @@ class CategoryController:
         else:
             author_music = list_music[index].split("_")[0]
             name_music = list_music[index].split("_")[1].split(".mp3")[0]
-        return Music(name_music, author_music, category, isGetViews, self.list_view[author_music+"_"+name_music])
+        return Music(name_music, author_music, category, self.list_view[author_music+"_"+name_music])
 
     def add_category(self):
         raise Exception("None this method")
@@ -196,9 +196,9 @@ class UpDownSession(Session):
             self.add_user(user_name, user_id)
         user: User = self.get_user(user_name, user_id)
         if self.music == None:
-            self.music = self.category_controller.get_music_by_category(self.category, True)
+            self.music = self.category_controller.get_music_by_category(self.category)
             if self.last_music == None:
-                self.last_music = self.category_controller.get_music_by_category(self.category, True)
+                self.last_music = self.category_controller.get_music_by_category(self.category)
                 return ReturnCommandObj("Минула пісня "+self.last_music.author+" - "+self.last_music.name+". \n👁‍🗨: " +str(self.last_music.get_views_in_text())+"\nВам надано 10 секунд пісні, спробуйте вгадати чи вона популярніша, чи менш популярніша від минулої", buttons=["_🔼", "_🔽"], file=self.music.get_file())
             else:
                 return ReturnCommandObj("Минула пісня "+self.last_music.author+" - "+self.last_music.name+". \n👁‍🗨: " +str(self.last_music.get_views_in_text())+"\nВам надано 10 секунд пісні, спробуйте вгадати чи вона популярніша, чи менш популярніша від минулої",
