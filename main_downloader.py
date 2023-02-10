@@ -142,6 +142,6 @@ def download_link(url, category):
 
 update_list_views_file()
 
-#downloader.start_download_thread("https://open.spotify.com/playlist/6hyQKlkQsGchQYEaLOVItN?si=f0398785e0084ba1", "VibeUkr", 65)
-#while(True):
- #   pass
+downloader.start_download_thread("https://open.spotify.com/playlist/6hyQKlkQsGchQYEaLOVItN?si=f0398785e0084ba1", "VibeUkr", 65)
+while(True):
+    pass

@@ -11,6 +11,7 @@ from moviepy.editor import *
 
 import SL_Settings
 import dropboxFN
+import Viewers
 
 def split_music(music, index):
     name_file = music.split(".mp3")[0]
@@ -52,6 +53,13 @@ def add_to_category(category, nameMusic):
     else:
         tmp = [nameMusic]
         SL_Settings.save_obj(tmp, category, "categorys")
+    tmp = SL_Settings.load_obj("list_view", "options")
+    name = nameMusic.split("_")[-1].split(".mp3")[0]
+    author = nameMusic.split("_"+name)[0]
+    view = Viewers.get_count_listen(author+" - " + name)
+    tmp[author+"_"+name] = view
+    SL_Settings.save_obj(tmp, "list_view", "options")
+
 
 Thread_work = False
 def start_download_thread(url, name_categoty, colvo=20):
